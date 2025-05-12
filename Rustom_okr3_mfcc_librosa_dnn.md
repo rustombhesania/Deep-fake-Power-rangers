@@ -1,4 +1,4 @@
-# Summary this week’s Work
+# Summary this week’s Work 12th May 2025
 
 ## 1. **Padding and Sample Size vs. Sampling Rate**
    - **Padding**: In audio processing, padding ensures that all audio samples in a dataset have the same length. This is crucial for batch processing in neural networks where the input dimensions need to be consistent. 
