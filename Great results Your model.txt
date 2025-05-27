@@ -24,4 +24,4 @@ Great results! Your model is training well. Looking at the output, I can see a f
 3. **Model architecture** - Experiment with different hidden layer sizes
 4. **Regularization** - The gap between train (99%+) and val (95%) suggests some overfitting
 
-Would you like me to modify the code to address the class imbalance issue or try other improvements? The current baseline is actually quite solid for ASVspoof2019!
+
