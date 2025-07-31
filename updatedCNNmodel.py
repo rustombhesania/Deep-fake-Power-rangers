@@ -9,21 +9,20 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
 
-# Dataset class for corrected features
 class CorrectedFeatureDataset(Dataset):
     def __init__(self, feature_file, label_file, max_len=None):
         self.features = np.load(feature_file, allow_pickle=True)
         self.labels = np.load(label_file)
         
-        # Ensure 2D features: (channels, time)
+        # make sure features are 2D
         processed_features = []
         for feat in self.features:
             if feat.ndim == 1:
-                feat = feat[np.newaxis, :]  # Add channel dimension
+                feat = feat[np.newaxis, :]
             processed_features.append(feat)
         self.features = processed_features
         
-        # Determine max length for padding
+        # figure out max length
         if max_len is None:
             lengths = [feat.shape[1] for feat in self.features]
             self.max_len = int(np.percentile(lengths, 95))
@@ -32,7 +31,6 @@ class CorrectedFeatureDataset(Dataset):
             
         print(f"Dataset: {len(self.labels)} samples, max_len: {self.max_len}")
         
-        # Show label distribution
         unique_labels, counts = np.unique(self.labels, return_counts=True)
         print(f"Classes: {len(unique_labels)} ({unique_labels.min()}-{unique_labels.max()})")
     
@@ -43,7 +41,7 @@ class CorrectedFeatureDataset(Dataset):
         feat = self.features[idx]
         label = self.labels[idx]
         
-        # Pad or truncate to max_len
+        # pad or cut to right size
         c, t = feat.shape
         if t > self.max_len:
             feat = feat[:, :self.max_len]
@@ -54,38 +52,38 @@ class CorrectedFeatureDataset(Dataset):
         return torch.FloatTensor(feat), torch.LongTensor([label]).squeeze()
 
 
-# Enhanced CNN model
+# CNN model with 4 conv blocks
 class EnhancedCNN(nn.Module):
     def __init__(self, n_channels, max_len, num_classes, dropout=0.3):
         super(EnhancedCNN, self).__init__()
         
         self.conv_layers = nn.Sequential(
-            # First conv block
+            # conv block 1
             nn.Conv1d(n_channels, 64, kernel_size=7, padding=3),
             nn.BatchNorm1d(64),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2),
             nn.Dropout(dropout),
             
-            # Second conv block  
+            # conv block 2
             nn.Conv1d(64, 128, kernel_size=5, padding=2),
             nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2),
             nn.Dropout(dropout),
             
-            # Third conv block
+            # conv block 3
             nn.Conv1d(128, 256, kernel_size=3, padding=1),
             nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2),
             nn.Dropout(dropout),
             
-            # Fourth conv block
+            # final conv block
             nn.Conv1d(256, 512, kernel_size=3, padding=1),
             nn.BatchNorm1d(512),
             nn.ReLU(),
-            nn.AdaptiveAvgPool1d(1)  # Global average pooling
+            nn.AdaptiveAvgPool1d(1)
         )
         
         self.classifier = nn.Sequential(
@@ -120,55 +118,55 @@ class CorrectedModelTrainer:
         print(f"TRAINING MODEL: {feature_name.upper()} (CORRECTED LABELS)")
         print(f"{'='*70}")
         
-        # Load corrected datasets
+        # load datasets
         train_feature_file = f'train_features_corrected/{feature_name}_features.npy'
         train_label_file = f'train_features_corrected/labels.npy'
         dev_feature_file = f'dev_features_corrected/{feature_name}_features.npy'
         dev_label_file = f'dev_features_corrected/labels.npy'
         
-        # Check files exist
+        # check if files exist
         for file_path in [train_feature_file, train_label_file, dev_feature_file, dev_label_file]:
             if not os.path.exists(file_path):
-                print(f"❌ File not found: {file_path}")
+                print(f"File not found: {file_path}")
                 return None
         
-        print(f"📁 Loading corrected datasets...")
+        print(f"Loading corrected datasets...")
         train_dataset = CorrectedFeatureDataset(train_feature_file, train_label_file)
         dev_dataset = CorrectedFeatureDataset(dev_feature_file, dev_label_file, 
                                             max_len=train_dataset.max_len)
         
-        # Create data loaders
+        # data loaders
         train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
         dev_loader = DataLoader(dev_dataset, batch_size=32, shuffle=False)
         
-        # Get feature dimensions and number of classes
+        # get dimensions
         sample_feat, sample_label = train_dataset[0]
         n_channels, max_len = sample_feat.shape
         num_classes = len(np.unique(train_dataset.labels))
         
-        print(f"📊 Model configuration:")
+        print(f"Model configuration:")
         print(f"   Input: {n_channels} channels × {max_len} time steps")
         print(f"   Output: {num_classes} classes")
         
-        # Create model
+        # create model
         model = EnhancedCNN(n_channels, max_len, num_classes, dropout=0.4).to(self.device)
         total_params = sum(p.numel() for p in model.parameters())
         print(f"   Parameters: {total_params:,}")
         
-        # Training setup
+        # training setup
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
         
-        # Training loop
+        # training vars
         best_dev_acc = 0.0
         patience_counter = 0
         history = {'train_acc': [], 'dev_acc': [], 'train_loss': [], 'dev_loss': []}
         
-        print(f"\n🚀 Starting training...")
+        print(f"\nStarting training...")
         
         for epoch in range(1, epochs + 1):
-            # Training phase
+            # train
             model.train()
             train_loss, train_correct, train_total = 0.0, 0, 0
             
@@ -188,7 +186,7 @@ class CorrectedModelTrainer:
             train_acc = train_correct / train_total
             train_loss = train_loss / train_total
             
-            # Validation phase
+            # validation
             model.eval()
             dev_loss, dev_correct, dev_total = 0.0, 0, 0
             
@@ -205,38 +203,37 @@ class CorrectedModelTrainer:
             dev_acc = dev_correct / dev_total
             dev_loss = dev_loss / dev_total
             
-            # Update history
+            # update history
             history['train_acc'].append(train_acc)
             history['dev_acc'].append(dev_acc)
             history['train_loss'].append(train_loss)
             history['dev_loss'].append(dev_loss)
             
-            # Learning rate scheduling
             scheduler.step(dev_loss)
             
             print(f"Epoch {epoch:3d}/{epochs} | "
                   f"Train: {train_acc:.3f} (loss: {train_loss:.4f}) | "
                   f"Dev: {dev_acc:.3f} (loss: {dev_loss:.4f})")
             
-            # Early stopping
+            # early stopping check
             if dev_acc > best_dev_acc:
                 best_dev_acc = dev_acc
                 best_model_state = model.state_dict().copy()
                 patience_counter = 0
-                print(f"  ✅ New best dev accuracy: {dev_acc:.3f}")
+                print(f"  New best dev accuracy: {dev_acc:.3f}")
             else:
                 patience_counter += 1
                 if patience_counter >= patience:
-                    print(f"  ⏹️  Early stopping at epoch {epoch}")
+                    print(f"  Early stopping at epoch {epoch}")
                     break
         
-        # Load best model
+        # load best model
         model.load_state_dict(best_model_state)
         
-        print(f"\n✅ Training completed!")
+        print(f"\nTraining completed!")
         print(f"   Best dev accuracy: {best_dev_acc:.3f}")
         
-        # Save model
+        # save model
         model_path = f'{feature_name}_model_corrected.pth'
         torch.save({
             'model_state_dict': best_model_state,
@@ -261,19 +258,19 @@ class CorrectedModelTrainer:
         }
     
     def evaluate_on_eval_set(self, model, feature_name):
-        """Evaluate model on eval set"""
-        print(f"\n🧪 EVALUATING {feature_name.upper()} ON EVAL SET")
+        """eval model on eval set"""
+        print(f"\nEVALUATING {feature_name.upper()} ON EVAL SET")
         print("="*50)
         
-        # Load eval dataset
+        # load eval data
         eval_feature_file = f'eval_features_corrected/{feature_name}_features.npy'
         eval_label_file = f'eval_features_corrected/labels.npy'
         
         if not os.path.exists(eval_feature_file) or not os.path.exists(eval_label_file):
-            print(f"❌ Eval files not found for {feature_name}")
+            print(f"Eval files not found for {feature_name}")
             return None
         
-        # Get max_len from train dataset
+        # get max_len from training
         train_dataset = CorrectedFeatureDataset(f'train_features_corrected/{feature_name}_features.npy',
                                               f'train_features_corrected/labels.npy')
         max_len = train_dataset.max_len
@@ -281,7 +278,7 @@ class CorrectedModelTrainer:
         eval_dataset = CorrectedFeatureDataset(eval_feature_file, eval_label_file, max_len=max_len)
         eval_loader = DataLoader(eval_dataset, batch_size=32, shuffle=False)
         
-        # Evaluate
+        # run evaluation
         model.eval()
         all_predictions = []
         all_labels = []
@@ -297,10 +294,10 @@ class CorrectedModelTrainer:
         
         eval_acc = accuracy_score(all_labels, all_predictions)
         
-        print(f"📊 EVAL RESULTS for {feature_name.upper()}:")
+        print(f"EVAL RESULTS for {feature_name.upper()}:")
         print(f"   Accuracy: {eval_acc:.3f} ({eval_acc*100:.1f}%)")
         
-        # Detailed classification report
+        # classification report
         available_classes = sorted(list(set(all_labels)))
         class_names_subset = [self.class_names[i] for i in available_classes]
         
@@ -311,7 +308,7 @@ class CorrectedModelTrainer:
             digits=3
         )
         
-        print(f"\n📋 Detailed Classification Report:")
+        print(f"\nDetailed Classification Report:")
         print(report)
         
         return {
@@ -342,7 +339,7 @@ class CorrectedModelTrainer:
         
         # Summary
         print(f"\n{'='*80}")
-        print("🎯 FINAL RESULTS SUMMARY (CORRECTED LABELS)")
+        print("FINAL RESULTS SUMMARY (CORRECTED LABELS)")
         print(f"{'='*80}")
         
         print(f"{'Feature':<8} {'Dev Acc':<8} {'Eval Acc':<8} {'Classes':<8}")
@@ -359,17 +356,17 @@ class CorrectedModelTrainer:
             best_feature = max(results.keys(), key=lambda x: results[x]['best_dev_acc'])
             best_dev_acc = results[best_feature]['best_dev_acc']
             
-            print(f"\n🏆 Best Feature: {best_feature.upper()} (Dev: {best_dev_acc:.3f})")
+            print(f"\nBest Feature: {best_feature.upper()} (Dev: {best_dev_acc:.3f})")
             
-            print(f"\n✅ REALISTIC RESULTS ACHIEVED!")
-            print(f"📊 These results are now comparable to published ASVspoof papers")
-            print(f"🎯 Ready for feature fusion experiments!")
+            print(f"\nRealistic results achieved!")
+            print(f"Results are now comparable to published ASVspoof papers")
+            print(f"Ready for feature fusion experiments!")
         
         return results
 
 
 if __name__ == "__main__":
-    print("🚀 TRAINING MODELS WITH CORRECTED LABELS")
+    print("TRAINING MODELS WITH CORRECTED LABELS")
     print("="*60)
     
     # Initialize trainer
@@ -379,9 +376,9 @@ if __name__ == "__main__":
     results = trainer.train_all_features()
     
     if results:
-        print(f"\n🎉 TRAINING COMPLETE!")
-        print(f"💾 Models saved with '_corrected.pth' suffix")
-        print(f"📈 Results show realistic accuracy (not 100%)")
-        print(f"🔬 Ready for research-quality analysis!")
+        print(f"\nTRAINING COMPLETE!")
+        print(f"Models saved with '_corrected.pth' suffix")
+        print(f"Results show realistic accuracy (not 100%)")
+        print(f"Ready for research-quality analysis!")
     else:
-        print(f"\n❌ Training failed!")
+        print(f"\nTraining failed!")
