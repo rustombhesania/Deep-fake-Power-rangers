@@ -1,0 +1,58 @@
+Model Training Results - ASVspoof Binary Classification
+Training Performance Summary
+The model completed training with early stopping at epoch 23. The training process showed good convergence with the following key metrics:
+
+Training accuracy: 99%+ (final epochs)
+Validation accuracy: 95.49% (peak at epoch 13)
+Test accuracy: 88.52%
+
+Early stopping was triggered after validation performance plateaued, which helped prevent overfitting.
+Dataset Characteristics
+The test dataset exhibited significant class imbalance:
+
+Spoof samples: 63,882 (89.7%)
+Bonafide samples: 7,355 (10.3%)
+Class ratio: Approximately 9:1 (spoof:bonafide)
+
+This imbalance likely influenced model performance and bias toward the majority class.
+Classification Results Analysis
+Overall Performance
+
+Test Accuracy: 88.52%
+Total samples evaluated: 71,237
+
+Per-Class Performance
+Bonafide (Real Audio):
+
+Precision: 47%
+Recall: 78%
+F1-score: 59%
+
+Spoof (Fake Audio):
+
+Precision: 97%
+Recall: 90%
+F1-score: 94%
+
+Key Observations from baseline dnn perfomance
+
+Class Imbalance Impact: The model demonstrates strong performance on spoof detection but struggles with bonafide classification due to the 9:1 class distribution.
+Precision vs Recall Trade-off: High recall for bonafide samples (78%) indicates the model successfully identifies most real audio, but low precision (47%) suggests many spoof samples are misclassified as bonafide.
+Overfitting Indicators: The gap between training accuracy (99%) and validation accuracy (95%) suggests some degree of overfitting.
+
+Limitations and Future Improvements
+Identified Issues
+
+Class imbalance affecting bonafide detection accuracy
+Potential overfitting based on train/validation performance gap
+Limited feature engineering (basic MFCC only)
+
+Proposed Improvements
+
+Class Imbalance Handling: Implement class weighting or balanced sampling strategies
+Feature Enhancement: Add delta and delta-delta MFCC coefficients
+Architecture Optimization: Experiment with different hidden layer configurations
+Regularization: Add dropout or L2 regularization to reduce overfitting
+
+Conclusion
+The baseline DNN model achieved reasonable performance (88.52% accuracy) for initial implementation. The results demonstrate successful learning of spoof detection patterns, with room for improvement in bonafide classification through addressing class imbalance and feature engineering enhancements.

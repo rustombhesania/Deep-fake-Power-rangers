@@ -1,3 +1,4 @@
+###this code have a 'corrected' in the filepaths since I modified the parser and that stupid thing skipped train and dev dataset. RIP my life.
 import os
 import numpy as np
 import librosa
